@@ -1,4 +1,4 @@
-/*************************************************************************/
+	/*************************************************************************/
 /*  rendering_server_viewport.cpp                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
@@ -348,6 +348,12 @@ void RenderingServerViewport::draw_viewports() {
 			}
 		}
 
+		if (vp->use_xr) {
+			// override our size, make sure it matches our required size
+			vp->size = xr_interface->get_render_targetsize();
+			RSG::storage->render_target_set_size(vp->render_target, vp->size.x, vp->size.y);
+		}
+
 		visible = visible && vp->size.x > 1 && vp->size.y > 1;
 
 		if (visible) {
@@ -365,23 +371,20 @@ void RenderingServerViewport::draw_viewports() {
 		RENDER_TIMESTAMP(">Rendering Viewport " + itos(i));
 
 		RSG::storage->render_target_set_as_unused(vp->render_target);
-#if 0
-		// TODO fix up this code after we change our commit_for_eye to accept our new render targets
 
 		if (vp->use_xr && xr_interface.is_valid()) {
-			// override our size, make sure it matches our required size
-			vp->size = xr_interface->get_render_targetsize();
-			RSG::storage->render_target_set_size(vp->render_target, vp->size.x, vp->size.y);
-
 			// render mono or left eye first
 			XRInterface::Eyes leftOrMono = xr_interface->is_stereo() ? XRInterface::EYE_LEFT : XRInterface::EYE_MONO;
 
 			// check for an external texture destination for our left eye/mono
-			// TODO investigate how we're going to make external textures work
-			RSG::storage->render_target_set_external_texture(vp->render_target, xr_interface->get_external_texture_for_eye(leftOrMono));
+			// TODO investigate how we're going to make external textures work, need this for Oculus Rift/Quest and OpenXR
+			// RSG::storage->render_target_set_external_texture(vp->render_target, xr_interface->get_external_texture_for_eye(leftOrMono));
 
-			// set our render target as current
-			RSG::rasterizer->set_current_render_target(vp->render_target);
+			// for now we don't support it..
+			RSG::storage->render_target_set_external_texture(vp->render_target, 0);
+
+			// set our render target as current, is this still needed?
+			// RSG::rasterizer->set_current_render_target(vp->render_target);
 
 			// and draw left eye/mono
 			_draw_viewport(vp, leftOrMono);
@@ -392,18 +395,19 @@ void RenderingServerViewport::draw_viewports() {
 				// check for an external texture destination for our right eye
 				RSG::storage->render_target_set_external_texture(vp->render_target, xr_interface->get_external_texture_for_eye(XRInterface::EYE_RIGHT));
 
-				// commit for eye may have changed the render target
-				RSG::rasterizer->set_current_render_target(vp->render_target);
+				// commit for eye may have changed the render target, is this still needed?
+				// RSG::rasterizer->set_current_render_target(vp->render_target);
 
 				_draw_viewport(vp, XRInterface::EYE_RIGHT);
 				xr_interface->commit_for_eye(XRInterface::EYE_RIGHT, vp->render_target, vp->viewport_to_screen_rect);
 			}
 
+			// blit to HMD happens in our ARVRInterface as SDKs apply lens distortion etc, so we don't add it to our blit list.
+			// we MAY change commit_for_eye to return a boolean so it will output either right or left eye to screen
+
 			// and for our frame timing, mark when we've finished committing our eyes
 			XRServer::get_singleton()->_mark_commit();
 		} else {
-#endif
-		{
 			RSG::storage->render_target_set_external_texture(vp->render_target, 0);
 
 			RSG::scene_render->set_debug_draw_mode(vp->debug_draw);
