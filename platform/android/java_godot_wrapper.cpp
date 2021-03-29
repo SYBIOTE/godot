@@ -81,6 +81,7 @@ GodotJavaWrapper::GodotJavaWrapper(JNIEnv *p_env, jobject p_activity, jobject p_
 	_on_godot_setup_completed = p_env->GetMethodID(godot_class, "onGodotSetupCompleted", "()V");
 	_on_godot_main_loop_started = p_env->GetMethodID(godot_class, "onGodotMainLoopStarted", "()V");
 	_create_new_godot_instance = p_env->GetMethodID(godot_class, "createNewGodotInstance", "([Ljava/lang/String;)V");
+	_get_display_rotation = p_env->GetMethodID(godot_class, "getDisplayRotation", "()I");
 
 	// get some Activity method pointers...
 	_get_class_loader = p_env->GetMethodID(activity_class, "getClassLoader", "()Ljava/lang/ClassLoader;");
@@ -356,5 +357,14 @@ void GodotJavaWrapper::create_new_godot_instance(List<String> args) {
 			env->SetObjectArrayElement(jargs, i, env->NewStringUTF(args[i].utf8().get_data()));
 		}
 		env->CallVoidMethod(godot_instance, _create_new_godot_instance, jargs);
+	}
+}
+
+int GodotJavaWrapper::get_display_rotation() {
+	if (_get_display_rotation) {
+		JNIEnv *env = get_jni_env();
+		return env->CallIntMethod(godot_instance, _get_display_rotation);
+	} else {
+		return 0;
 	}
 }
