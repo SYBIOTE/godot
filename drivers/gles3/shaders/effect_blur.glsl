@@ -40,6 +40,8 @@ uniform sampler2D source_ssao; //texunit:1
 
 uniform float lod;
 uniform vec2 pixel_size;
+uniform float camera_z_far;
+uniform float camera_z_near;
 
 layout(location = 0) out vec4 frag_color;
 
@@ -84,6 +86,32 @@ uniform float dof_near_end;
 uniform vec2 dof_dir;
 uniform float dof_radius;
 
+float get_blur_depth(vec2 uv) {
+	float depth = textureLod(dof_source_depth, uv, 0.0).r;
+	depth = depth * 2.0 - 1.0;
+#ifdef USE_ORTHOGONAL_PROJECTION
+	depth = ((depth + (camera_z_far + camera_z_near) / (camera_z_far - camera_z_near)) * (camera_z_far - camera_z_near)) / 2.0;
+#else
+	depth = 2.0 * camera_z_near * camera_z_far / (camera_z_far + camera_z_near - depth * (camera_z_far - camera_z_near));
+#endif
+
+	return depth;
+}
+
+float get_blur_amount(float depth) {
+	// Combine near and far, our depth is unlikely to be in both ranges
+	float amount = 1.0;
+#ifdef DOF_FAR_BLUR
+	amount *= 1.0 - smoothstep(dof_far_begin, dof_far_end, depth);
+#endif
+#ifdef DOF_NEAR_BLUR
+	amount *= smoothstep(dof_near_end, dof_near_begin, depth);
+#endif
+	amount = 1.0 - amount;
+
+	return amount;
+}
+
 #endif
 
 #ifdef GLOW_FIRST_PASS
@@ -104,9 +132,6 @@ uniform float glow_hdr_threshold;
 uniform float glow_hdr_scale;
 
 #endif
-
-uniform float camera_z_far;
-uniform float camera_z_near;
 
 void main() {
 #ifdef GAUSSIAN_HORIZONTAL
@@ -160,67 +185,39 @@ void main() {
 
 #if defined(DOF_FAR_BLUR) || defined(DOF_NEAR_BLUR)
 
-	vec4 color_accum = vec4(0.0);
+	float radius = float(dof_kernel_size - dof_kernel_from);
+	float center_depth = get_blur_depth(uv_interp);
+	float center_size = get_blur_amount(center_depth) * radius;
+	float center_k = dof_kernel[dof_kernel_from];
 
-	float depth = textureLod(dof_source_depth, uv_interp, 0.0).r;
-	depth = depth * 2.0 - 1.0;
-#ifdef USE_ORTHOGONAL_PROJECTION
-	depth = ((depth + (camera_z_far + camera_z_near) / (camera_z_far - camera_z_near)) * (camera_z_far - camera_z_near)) / 2.0;
-#else
-	depth = 2.0 * camera_z_near * camera_z_far / (camera_z_far + camera_z_near - depth * (camera_z_far - camera_z_near));
-#endif
+	vec4 color_accum = textureLod(source_color, uv_interp, 0.0);
+	float accum = 1.0;
 
-	// Combine near and far, our depth is unlikely to be in both ranges
-	float amount = 1.0;
-#ifdef DOF_FAR_BLUR
-	amount *= 1.0 - smoothstep(dof_far_begin, dof_far_end, depth);
-#endif
-#ifdef DOF_NEAR_BLUR
-	amount *= smoothstep(dof_near_end, dof_near_begin, depth);
-#endif
-	amount = 1.0 - amount;
+	for (int i = 0; i < dof_kernel_size; i++) {
+		if (i != dof_kernel_from) { // skip our center fragment, already handled it
+			float offset = float(i - dof_kernel_from);
+			vec2 tap_uv = uv_interp + dof_dir * offset * dof_radius;
 
-	if (amount > 0.0) {
-		float k_accum = 0.0;
-
-		for (int i = 0; i < dof_kernel_size; i++) {
-			int int_ofs = i - dof_kernel_from;
-			vec2 tap_uv = uv_interp + dof_dir * float(int_ofs) * amount * dof_radius;
-
-			float tap_k = dof_kernel[i];
-
-			float tap_depth = texture(dof_source_depth, tap_uv, 0.0).r;
-			tap_depth = tap_depth * 2.0 - 1.0;
-#ifdef USE_ORTHOGONAL_PROJECTION
-			tap_depth = ((tap_depth + (camera_z_far + camera_z_near) / (camera_z_far - camera_z_near)) * (camera_z_far - camera_z_near)) / 2.0;
-#else
-			tap_depth = 2.0 * camera_z_near * camera_z_far / (camera_z_far + camera_z_near - tap_depth * (camera_z_far - camera_z_near));
-#endif
-			float tap_amount = 1.0;
-#ifdef DOF_FAR_BLUR
-			tap_amount *= mix(1.0 - smoothstep(dof_far_begin, dof_far_end, tap_depth), 0.0, int_ofs == 0);
-#endif
-#ifdef DOF_NEAR_BLUR
-			tap_amount *= mix(smoothstep(dof_near_end, dof_near_begin, tap_depth), 0.0, int_ofs == 0);
-#endif
-			tap_amount = 1.0 - tap_amount;
-			tap_amount *= tap_amount * tap_amount; //prevent undesired glow effect
+			float tap_k = dof_kernel[i] / center_k; // normalise our gradient.
 
 			vec4 tap_color = textureLod(source_color, tap_uv, 0.0) * tap_k;
+			float tap_depth = get_blur_depth(tap_uv);
+			float tap_size = get_blur_amount(tap_depth) * radius;
+			if (tap_depth > center_depth) {
+				// sample is behind our center fragment, limit contribution
+				tap_size = clamp(tap_size, 0.0, center_size * 2.0);
+			}
 
-			k_accum += tap_k * tap_amount;
-			color_accum += tap_color * tap_amount;
+			// This results in kind of a square bokeh that is rounded by our gaussian gradients
+			// Not very accurate but better then 4 pass gaussian
+			float tap_amount = smoothstep(abs(offset) - 0.5, abs(offset) + 0.5, tap_size);
+			color_accum += mix(color_accum / accum, tap_color, tap_amount);
+
+			accum += 1.0;
 		}
-
-		if (k_accum > 0.0) {
-			color_accum /= k_accum;
-		}
-
-		frag_color = color_accum; ///k_accum;
-	} else {
-		// We're in focus, no need to waste time sampling the same UV a bunch of times...
-		frag_color = textureLod(source_color, uv_interp, 0.0);
 	}
+
+	frag_color = color_accum / accum;
 #endif
 
 #ifdef GLOW_FIRST_PASS
