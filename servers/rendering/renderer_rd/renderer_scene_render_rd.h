@@ -47,6 +47,8 @@
 #include "servers/rendering/renderer_scene_render.h"
 #include "servers/rendering/rendering_device.h"
 
+#include "servers/rendering/renderer_rd/renderer_scene_implementation_rd.h"
+
 struct RenderDataRD {
 	RID render_buffers;
 
@@ -101,6 +103,7 @@ class RendererSceneRenderRD : public RendererSceneRender {
 	friend RendererRD::GI;
 
 protected:
+	RendererRD::SceneImplementationRD *scene_implementation = nullptr;
 	RendererRD::BokehDOF *bokeh_dof = nullptr;
 	RendererRD::CopyEffects *copy_effects = nullptr;
 	RendererRD::ToneMapper *tone_mapper = nullptr;
@@ -999,6 +1002,8 @@ public:
 
 	/* SHADOW ATLAS API */
 
+	// !BAS! shadow atlas we need to think about moving to storage?
+
 	virtual RID shadow_atlas_create() override;
 	virtual void shadow_atlas_set_size(RID p_atlas, int p_size, bool p_16_bits = true) override;
 	virtual void shadow_atlas_set_quadrant_subdivision(RID p_atlas, int p_quadrant, int p_subdivision) override;
@@ -1035,6 +1040,8 @@ public:
 
 	/* SDFGI UPDATE */
 
+	// !BAS! need to think about moving this into our SDFGI environment class?
+
 	virtual void sdfgi_update(RID p_render_buffers, RID p_environment, const Vector3 &p_world_position) override;
 	virtual int sdfgi_get_pending_region_count(RID p_render_buffers) const override;
 	virtual AABB sdfgi_get_pending_region_bounds(RID p_render_buffers, int p_region) const override;
@@ -1042,6 +1049,8 @@ public:
 	RID sdfgi_get_ubo() const { return gi.sdfgi_ubo; }
 
 	/* SKY API */
+
+	// !BAS! need to think about moving this into our Sky environment class?
 
 	virtual RID sky_allocate() override;
 	virtual void sky_initialize(RID p_rid) override;
