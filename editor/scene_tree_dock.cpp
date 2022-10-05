@@ -3423,7 +3423,13 @@ void SceneTreeDock::_update_configuration_warning() {
 }
 
 SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selection, EditorData &p_editor_data) {
-	singleton = this;
+	if (singleton == nullptr) {
+		// The first instance is created by our main editor and becomes our singleton.
+		// A second instance can be created by our VR editor to visualise the same information.
+		// TODO much more work is needed to make this class work properly so we have one state and multiple instances showing the state.
+		singleton = this;
+	}
+
 	set_name("Scene");
 	edited_scene = nullptr;
 	editor_data = &p_editor_data;

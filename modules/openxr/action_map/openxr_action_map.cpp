@@ -439,6 +439,7 @@ void OpenXRActionMap::create_default_action_sets() {
 	profile->add_new_binding(primary_click, "/user/hand/left/input/trackpad/click,/user/hand/right/input/trackpad/click");
 	profile->add_new_binding(primary_touch, "/user/hand/left/input/trackpad/touch,/user/hand/right/input/trackpad/touch");
 	profile->add_new_binding(haptic, "/user/hand/left/output/haptic,/user/hand/right/output/haptic");
+	add_interaction_profile(profile);
 
 	// Create our HTC Vive tracker profile
 	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/htc/vive_tracker_htcx");
@@ -474,7 +475,73 @@ void OpenXRActionMap::create_default_action_sets() {
 }
 
 void OpenXRActionMap::create_editor_action_sets() {
-	// TODO implement
+	// Create our Godot action set
+	Ref<OpenXRActionSet> action_set = OpenXRActionSet::new_action_set("godot_editor", "Godot Editor action set");
+	add_action_set(action_set);
+
+	// Create our actions
+	Ref<OpenXRAction> select = action_set->add_new_action("select", "Select", OpenXRAction::OPENXR_ACTION_BOOL, "/user/hand/left,/user/hand/right");
+	Ref<OpenXRAction> tool_pose = action_set->add_new_action("tool_pose", "Tool pose", OpenXRAction::OPENXR_ACTION_POSE, "/user/hand/left,/user/hand/right");
+
+	// Create our interaction profiles
+	Ref<OpenXRInteractionProfile> profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/khr/simple_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Vive controller profile
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/htc/vive_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our WMR controller profile
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/microsoft/motion_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Meta touch controller profile
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/oculus/touch_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Valve index controller profile
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/valve/index_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our HP MR controller profile
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/hp/mixed_reality_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Samsung Odyssey controller profile,
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/samsung/odyssey_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Vive Cosmos controller
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/htc/vive_cosmos_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Vive Focus 3 controller
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/htc/vive_focus3_controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
+
+	// Create our Huawei controller
+	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/huawei/controller");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
+	add_interaction_profile(profile);
 }
 
 Ref<OpenXRAction> OpenXRActionMap::get_action(const String p_path) const {
