@@ -365,3 +365,8 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+*.strings
+*.icns
+*.plist
+Godot.app/Contents/MacOS/Godot
+Godot.app/Contents/PkgInfo
